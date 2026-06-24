@@ -7,7 +7,6 @@ import { EnvironmentVariables } from './dto/env.dto';
 @Module({
   imports: [
     NestConfigModule.forRoot({
-      isGlobal: true,
       validate: (config) => plainToInstance(EnvironmentVariables, config),
     }),
   ],
