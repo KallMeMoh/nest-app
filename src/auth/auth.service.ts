@@ -1,15 +1,254 @@
-import { Injectable } from '@nestjs/common';
-import { AuthRepository } from './auth.repository';
+import { compare, hash } from 'bcrypt';
+import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '../config/config.service';
+import { MailService } from '../mail/mail.service';
+import { UserRoleEnum } from '../user/enums/user-role.enum';
 import { UserRepository } from '../user/user.repository';
+import { AuthRepository } from './auth.repository';
+import { LoginDto } from './dto/login.dto';
+import { SignupDto } from './dto/signup.dto';
+import { AuthProviderEnum } from './enums/auth-provider.enum';
+import { JwtService } from '@nestjs/jwt';
+import { Types } from 'mongoose';
+import { LoginConfirmationDto } from './dto/login-confirmation.dto';
+import { OAuth2Client } from 'google-auth-library';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
+  googleClient = new OAuth2Client();
+
   constructor(
     private readonly authRepository: AuthRepository,
     private readonly userRepository: UserRepository,
+    private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
+    private readonly configService: ConfigService,
   ) {}
 
-  async findAll() {
-    // return this.authRepository
+  private generateTokens(userId: Types.ObjectId, jwtid?: string) {
+    const jti = jwtid ?? randomUUID();
+
+    const accessToken = this.jwtService.sign(
+      { sub: userId, jti },
+      {
+        // note to self: explicitness is superior than implicitness
+        secret: this.configService.refreshSecret,
+        expiresIn: '15m',
+      },
+    );
+
+    const refreshToken = this.jwtService.sign(
+      { sub: userId, jti },
+      {
+        secret: this.configService.refreshSecret,
+        expiresIn: '1y',
+      },
+    );
+
+    return { accessToken, refreshToken, requires2FA: false } as const;
+  }
+
+  async signup({
+    username,
+    email,
+    password,
+    verificationRedirectUrl,
+  }: SignupDto) {
+    const userExists = await this.userRepository.existsByEmail(email);
+    if (userExists) throw new ConflictException('Email already in use');
+
+    const hashedPassword = await hash(password, this.configService.saltRounds);
+
+    const user = await this.userRepository.create({
+      username,
+      email,
+      avatarKey: null,
+      verified: false,
+      has2FA: false,
+      hashedPassword,
+
+      provider: AuthProviderEnum.System,
+      role: UserRoleEnum.User,
+      verificationExpiry: new Date(),
+      deletedAt: null,
+    });
+
+    const token = randomBytes(32).toString('hex');
+    await this.userRepository.setVerificationCode(user._id, token);
+
+    this.mailService
+      .sendVerificationEmail(user.email, `${verificationRedirectUrl}/${token}`)
+      .catch((err: unknown) => console.error('Failed to email OTP: ', err));
+  }
+
+  async login({ email, password }: LoginDto) {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) throw new NotFoundException('Account does not exist');
+
+    if (user.provider !== AuthProviderEnum.System)
+      throw new BadRequestException(
+        'This account uses Google sign-in. Please continue with Google.',
+      );
+
+    const loginAttempts = await this.authRepository.getLoginAttempts(user._id);
+    if (loginAttempts && parseInt(loginAttempts) > 5)
+      throw new NotFoundException(
+        'Account temporarily banned, try again later',
+      );
+
+    const matchedPassword = await compare(password, user.hashedPassword!);
+    if (!matchedPassword) {
+      await this.authRepository.incrementLoginAttempts(user._id);
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (user.has2FA) {
+      const token = this.jwtService.sign(
+        { sub: user._id },
+        {
+          secret: this.configService.pendingAuthSecret,
+          expiresIn: '10m',
+        },
+      );
+
+      const code = randomInt(100_000, 999_999).toString();
+      await this.authRepository.store2FACode(user._id, code);
+      await this.mailService.send2FAEmail(user.email, code);
+
+      return { requires2FA: true, token } as const;
+    }
+
+    return this.generateTokens(user._id);
+  }
+
+  async confirmLogin({ otp, token }: LoginConfirmationDto) {
+    const payload = this.jwtService.verify<{ sub: string }>(token, {
+      secret: this.configService.pendingAuthSecret,
+    });
+
+    const userId = new Types.ObjectId(payload.sub);
+    const [user, code] = await Promise.all([
+      this.userRepository.findById(userId),
+      this.authRepository.get2FACode(userId),
+    ]);
+
+    if (!user) throw new NotFoundException('Account does not exist');
+    if (!code) throw new NotFoundException('OTP Expired, please login again');
+
+    const loginAttempts = await this.authRepository.getLoginAttempts(user._id);
+    if (loginAttempts && parseInt(loginAttempts) > 5)
+      throw new UnauthorizedException(
+        'Account temporarily banned, try again later',
+      );
+
+    if (otp !== code) {
+      await this.authRepository.incrementLoginAttempts(user._id);
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return this.generateTokens(user._id);
+  }
+
+  async googleSignup(idToken: string) {
+    const ticket = await this.googleClient.verifyIdToken({
+      idToken,
+      audience: this.configService.googleClientId,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) throw new BadRequestException();
+    const { given_name, email, picture, email_verified } = payload;
+
+    const user = await this.userRepository.findByEmail(email ?? '');
+    if (user) throw new ConflictException('Account already exists');
+
+    await this.userRepository.create({
+      username: given_name!,
+      email: email!,
+      verified: email_verified ?? false,
+      avatarKey: picture ?? null,
+      provider: AuthProviderEnum.Google,
+      has2FA: false,
+      role: UserRoleEnum.User,
+      deletedAt: null,
+    });
+  }
+
+  async googleLogin(idToken: string) {
+    const ticket = await this.googleClient.verifyIdToken({
+      idToken,
+      audience: this.configService.googleClientId,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) throw new BadRequestException();
+
+    const user = await this.userRepository.findByEmailAndProvider(
+      payload.email ?? '',
+      AuthProviderEnum.Google,
+    );
+
+    if (!user) throw new UnauthorizedException();
+
+    if (user.provider !== AuthProviderEnum.Google)
+      throw new BadRequestException(
+        'This account uses password sign-in. Please log in with your password.',
+      );
+
+    return this.generateTokens(user._id);
+  }
+
+  async rotateToken(userId: Types.ObjectId, jti: string) {
+    const user = await this.userRepository.findById(userId);
+
+    if (!user) throw new NotFoundException('Account does not exist');
+
+    const { accessToken: newAccessToken } = this.generateTokens(user._id, jti);
+
+    return newAccessToken;
+  }
+
+  async resetPassword({ email, verificationRedirectUrl }: ForgotPasswordDto) {
+    const user = await this.userRepository.findByEmail(email);
+
+    if (!user) return;
+
+    const token = randomBytes(32).toString('hex');
+    await this.authRepository.setPasswordResetToken(token, user._id);
+    await this.mailService.sendPasswordResetEmail(
+      user.email,
+      `${verificationRedirectUrl}/${token}`,
+    );
+  }
+
+  async verifyResetPassword(token: string, { new_password }: ResetPasswordDto) {
+    const userId =
+      (await this.authRepository.getPasswordResetToken(token)) ?? '';
+
+    if (!Types.ObjectId.isValid(userId))
+      throw new NotFoundException('Invalid or expired reset token');
+
+    const hashedPassword = await hash(
+      new_password,
+      this.configService.saltRounds,
+    );
+    await this.userRepository.updatePassword(
+      new Types.ObjectId(userId),
+      hashedPassword,
+    );
+  }
+
+  async blacklistToken(jti: string) {
+    await this.authRepository.blacklistToken(jti);
   }
 }

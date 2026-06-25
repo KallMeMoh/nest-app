@@ -7,6 +7,11 @@ export enum NodeEnv {
   TEST = 'test',
 }
 
+// note to self: no need to support what the app doesn't use
+export enum EncryptionAlgo {
+  AES_256_GCM = 'aes-256-gcm',
+}
+
 export class EnvironmentVariables {
   @IsEnum(NodeEnv)
   @IsOptional()
@@ -27,6 +32,13 @@ export class EnvironmentVariables {
   @IsNumber()
   @IsOptional()
   SALT_ROUNDS: number = 10;
+
+  @IsString()
+  ENCRYPTION_KEY!: string;
+
+  @IsEnum(EncryptionAlgo)
+  @IsOptional()
+  ENCRYPTION_ALGO: EncryptionAlgo = EncryptionAlgo.AES_256_GCM;
 
   @IsString()
   JWT_ACCESS_SECRET!: string;

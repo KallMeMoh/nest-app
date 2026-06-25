@@ -28,12 +28,14 @@ export class ConfigService {
     return this.config.get('SALT_ROUNDS', { infer: true });
   }
 
-  // get encryptionKey() {
-  //   return this.config.getOrthrow('ENCRYPTION_KEY', { infer: true });
-  // }
-  // get encryptionAlgo() {
-  //   return this.config.getOrthrow('ENCRYPTION_ALGO', { infer: true });
-  // }
+  get encryptionKey() {
+    return Buffer.from(
+      this.config.getOrThrow('ENCRYPTION_KEY', { infer: true }),
+    );
+  }
+  get encryptionAlgo() {
+    return this.config.get('ENCRYPTION_ALGO', { infer: true });
+  }
 
   get accessSecret() {
     return this.config.getOrThrow('JWT_ACCESS_SECRET', { infer: true });
@@ -54,7 +56,7 @@ export class ConfigService {
     return this.config.getOrThrow('SMTP_PASS', { infer: true });
   }
 
-  get googleClient() {
+  get googleClientId() {
     return this.config.getOrThrow('GOOGLE_CLIENT_ID', { infer: true });
   }
 

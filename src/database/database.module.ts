@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '../config/config.module';
 import { ConfigService } from '../config/config.service';
@@ -9,6 +9,8 @@ import { ConfigService } from '../config/config.service';
 // at runtime, so it has to be a dynamic module, and then this
 // dynamic module imports ConfigModule because it exposes it's
 // ConfigService.
+
+@Global()
 @Module({
   imports: [
     MongooseModule.forRootAsync({
