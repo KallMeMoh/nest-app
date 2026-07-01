@@ -146,9 +146,8 @@ export class UserService {
   }
 
   async delete(userId: string, tokenId: string) {
-    const { modifiedCount } = await this.userRepository.deleteById(userId);
-    if (modifiedCount < 1)
-      throw new NotFoundException('Account does not exist');
+    const { deletedCount } = await this.userRepository.deleteById(userId);
+    if (deletedCount < 1) throw new NotFoundException('Account does not exist');
 
     this.eventEmitter.emit('user.deleted', { tokenId });
   }

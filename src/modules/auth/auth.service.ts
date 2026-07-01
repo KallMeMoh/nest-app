@@ -82,7 +82,6 @@ export class AuthService {
       provider: AuthProviderEnum.System,
       role: UserRoleEnum.User,
       verificationExpiry: new Date(),
-      deletedAt: null,
     });
 
     const token = randomBytes(32).toString('hex');
@@ -185,7 +184,6 @@ export class AuthService {
       provider: AuthProviderEnum.Google,
       has2FA: false,
       role: UserRoleEnum.User,
-      deletedAt: null,
     });
   }
 

@@ -60,7 +60,7 @@ export class UserRepository {
   }
 
   deleteById(userId: string) {
-    return this.userModel.updateOne({ _id: userId }, { deletedAt: new Date() });
+    return this.userModel.deleteOne({ _id: userId });
   }
 
   updatePassword(userId: string, hashedPassword: string) {

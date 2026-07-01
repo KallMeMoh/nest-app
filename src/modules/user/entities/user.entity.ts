@@ -72,25 +72,9 @@ export class User {
   })
   verificationExpiry?: Date;
 
-  @Prop({ type: Date, default: null })
-  deletedAt!: Date | null;
-
   createdAt!: Date;
   updatedAt!: Date;
 }
 
 export type UserDocument = HydratedDocument<User>;
 export const UserSchema = SchemaFactory.createForClass(User);
-
-const queryMethods = [
-  'find',
-  'findOne',
-  'findOneAndUpdate',
-  'findOneAndDelete',
-] as const;
-
-queryMethods.forEach((method) => {
-  UserSchema.pre(method, function () {
-    this.where({ deletedAt: null });
-  });
-});
