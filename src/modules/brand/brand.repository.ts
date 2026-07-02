@@ -13,8 +13,8 @@ export class BrandRepository {
     return this.brandModel.create(data);
   }
 
-  async findById(categoryId: string) {
-    return this.brandModel.findById(categoryId);
+  async findById(brandId: string) {
+    return this.brandModel.findById(brandId);
   }
 
   async findAll() {

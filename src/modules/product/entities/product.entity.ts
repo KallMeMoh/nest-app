@@ -1,12 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { slugify } from 'transliteration';
+import { CreationStatusEnum } from '../../../common/enums/creation-status.enum';
 import { Brand } from '../../brand/entities/brand.entity';
 import { Category } from '../../category/entities/category.entity';
 import { Subcategory } from '../../subcategory/entities/subcategory.entity';
 import { DiscounTypeEnum } from '../enums/discount-type.enum';
-import { Review } from '../../review/entities/review.entity';
-import { CreationStatusEnum } from '../../../common/enums/creation-status.enum';
 
 @Schema({
   timestamps: true,
@@ -44,8 +42,8 @@ export class Product {
 
   @Prop({
     type: {
-      type: {
-        type: DiscounTypeEnum,
+      discountType: {
+        type: String,
         enum: Object.values(DiscounTypeEnum),
         default: DiscounTypeEnum.Amount,
       },
@@ -65,20 +63,10 @@ export class Product {
   stock!: number;
 
   @Prop({
-    type: {
-      avg: { type: Number, default: 0 },
-      reviews: {
-        type: [Types.ObjectId],
-        default: [],
-        ref: Review.name,
-      },
-    },
-    required: true,
+    type: Number,
+    default: 0,
   })
-  rating!: {
-    avg: number;
-    reviews: [Types.ObjectId];
-  };
+  ratingAvg!: number;
 
   @Prop({
     type: String,
@@ -126,9 +114,3 @@ export class Product {
 
 export type ProductDocument = HydratedDocument<Product>;
 export const ProductSchema = SchemaFactory.createForClass(Product);
-
-ProductSchema.pre('validate', function () {
-  if (this.isModified('name')) {
-    this.slug = slugify(this.name, { separator: '_' });
-  }
-});
