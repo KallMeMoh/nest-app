@@ -3,13 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { SubcategoryRepository } from './subcategory.repository';
-import { CategoryDto } from '../category/dto/category.dto';
 import { randomUUID } from 'crypto';
-import { slugify } from 'transliteration';
-import { SubcategoryDto } from './dto/subcategory.dto';
 import { Types } from 'mongoose';
+import { slugify } from 'transliteration';
 import { CreationStatusEnum } from '../../common/enums/creation-status.enum';
+import { SubcategoryDto } from './dto/subcategory.dto';
+import { SubcategoryRepository } from './subcategory.repository';
 
 @Injectable()
 export class SubcategoryService {
@@ -22,7 +21,7 @@ export class SubcategoryService {
       key = `subcategory/${Date.now()}_${randomUUID()}.${logo_mimetype.split('/')[1]}`;
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { __v, ...category } = await this.subcategoryRepository.create({
+    const { __v, ...subcategory } = await this.subcategoryRepository.create({
       name,
       slug: slugify(name, { separator: '-' }),
       logoKey: key,
@@ -32,7 +31,7 @@ export class SubcategoryService {
         : CreationStatusEnum.Published,
     });
 
-    return category;
+    return subcategory;
   }
 
   async confirmSubcategoryCreation(subcategoryId: string) {
@@ -54,8 +53,8 @@ export class SubcategoryService {
     return this.subcategoryRepository.findBySlug(slug);
   }
 
-  update(slug: string, updateCategoryDto: Partial<CategoryDto>) {
-    return this.subcategoryRepository.updateOne(slug, updateCategoryDto);
+  update(slug: string, updateSubcategoryDto: Partial<SubcategoryDto>) {
+    return this.subcategoryRepository.updateOne(slug, updateSubcategoryDto);
   }
 
   remove(id: string) {

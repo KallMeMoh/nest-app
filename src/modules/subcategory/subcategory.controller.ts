@@ -13,8 +13,8 @@ import { SubcategoryDto } from './dto/subcategory.dto';
 import { R2BucketService } from '../bucket/bucket.service';
 import { CreationStatusEnum } from '../../common/enums/creation-status.enum';
 
-@Controller('category')
-export class CategoryController {
+@Controller('subcategory')
+export class SubcategoryController {
   constructor(
     private readonly subcategoryService: SubcategoryService,
     private readonly r2BucketService: R2BucketService,
@@ -66,9 +66,9 @@ export class CategoryController {
   @Patch(':id')
   update(
     @Param('id') id: string,
-    @Body() updateCategoryDto: Partial<SubcategoryDto>,
+    @Body() updateSubcategoryDto: Partial<SubcategoryDto>,
   ) {
-    return this.subcategoryService.update(id, updateCategoryDto);
+    return this.subcategoryService.update(id, updateSubcategoryDto);
   }
 
   @Delete(':id')
