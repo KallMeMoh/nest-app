@@ -12,8 +12,8 @@ import { AllowedPictureMimeType } from '../../../common/enums/picture-mimetype.e
 export class CategoryDto {
   @Transform(({ value }: { value?: string }) => value?.trim())
   @IsString()
-  @MinLength(3, { message: 'Username must be at least 3 characters' })
-  @MaxLength(20, { message: 'Username must be at most 20 characters' })
+  @MinLength(3, { message: 'Name must be at least 3 characters' })
+  @MaxLength(20, { message: 'Name must be at most 20 characters' })
   @Matches(/^[A-Z]/, {
     message: 'Name must start with an uppercase letter',
   })
