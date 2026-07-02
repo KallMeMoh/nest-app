@@ -8,12 +8,10 @@ import {
   Post,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { CreationStatusEnum } from '../../common/enums/creation-status.enum';
 import { R2BucketService } from '../bucket/bucket.service';
 import { CategoryService } from './category.service';
 import { CategoryDto } from './dto/category.dto';
-import { ExtractUser } from '../../common/decorators/extract-user';
-import { User } from '../user/entities/user.entity';
-import { CreationStatusEnum } from '../../common/enums/creation-status.enum';
 
 @Controller('category')
 export class CategoryController {
@@ -38,14 +36,9 @@ export class CategoryController {
   }
 
   @Post(':id/confirm')
-  async confirmCategoryCreation(
-    @ExtractUser() user: User,
-    @Param('id') categoryId: string,
-  ) {
-    const category = await this.categoryService.confirmPostCreation(
-      user,
-      categoryId,
-    );
+  async confirmCategoryCreation(@Param('id') categoryId: string) {
+    const category =
+      await this.categoryService.confirmCategoryCreation(categoryId);
     if (!category.logoKey) {
       category.status = CreationStatusEnum.Published;
       await category.save();

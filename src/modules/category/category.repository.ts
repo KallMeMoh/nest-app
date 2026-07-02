@@ -9,7 +9,7 @@ export class CategoryRepository {
     @InjectModel(Category.name) private readonly categoryModel: Model<Category>,
   ) {}
 
-  create(data: Partial<Category>) {
+  create(data: Omit<Category, '_id' | 'createdAt' | 'updatedAt'>) {
     return this.categoryModel.create(data);
   }
 

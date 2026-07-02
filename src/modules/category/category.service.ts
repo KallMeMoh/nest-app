@@ -6,16 +6,12 @@ import {
 import { randomUUID } from 'node:crypto';
 import { slugify } from 'transliteration';
 import { CreationStatusEnum } from '../../common/enums/creation-status.enum';
-import { User } from '../user/entities/user.entity';
 import { CategoryRepository } from './category.repository';
 import { CategoryDto } from './dto/category.dto';
 
 @Injectable()
 export class CategoryService {
-  constructor(
-    private readonly categoryRepository: CategoryRepository,
-    //
-  ) {}
+  constructor(private readonly categoryRepository: CategoryRepository) {}
 
   async create({ name, logo_mimetype }: CategoryDto) {
     let key: string | null = null;
@@ -28,12 +24,15 @@ export class CategoryService {
       name,
       slug: slugify(name, { separator: '-' }),
       logoKey: key,
+      status: logo_mimetype
+        ? CreationStatusEnum.Draft
+        : CreationStatusEnum.Published,
     });
 
     return category;
   }
 
-  async confirmPostCreation(user: User, categoryId: string) {
+  async confirmCategoryCreation(categoryId: string) {
     const category = await this.categoryRepository.findById(categoryId);
     if (!category) throw new NotFoundException("Category doesn't exist");
 

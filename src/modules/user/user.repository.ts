@@ -31,7 +31,7 @@ export class UserRepository {
     return this.userModel.exists({ email });
   }
 
-  async create(data: Partial<User>) {
+  async create(data: Omit<User, '_id' | 'createdAt' | 'updatedAt'>) {
     return this.userModel.create(data);
   }
 
