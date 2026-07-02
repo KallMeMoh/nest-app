@@ -1,26 +1,61 @@
-import { Injectable } from '@nestjs/common';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { slugify } from 'transliteration';
+import { CreationStatusEnum } from '../../common/enums/creation-status.enum';
+import { User } from '../user/entities/user.entity';
+import { CategoryRepository } from './category.repository';
+import { CategoryDto } from './dto/category.dto';
 
 @Injectable()
 export class CategoryService {
-  create(createCategoryDto: CreateCategoryDto) {
-    return 'This action adds a new category';
+  constructor(
+    private readonly categoryRepository: CategoryRepository,
+    //
+  ) {}
+
+  async create({ name, logo_mimetype }: CategoryDto) {
+    let key: string | null = null;
+
+    if (logo_mimetype)
+      key = `category/${Date.now()}_${randomUUID()}.${logo_mimetype.split('/')[1]}`;
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { __v, ...category } = await this.categoryRepository.create({
+      name,
+      slug: slugify(name, { separator: '-' }),
+      logoKey: key,
+    });
+
+    return category;
+  }
+
+  async confirmPostCreation(user: User, categoryId: string) {
+    const category = await this.categoryRepository.findById(categoryId);
+    if (!category) throw new NotFoundException("Category doesn't exist");
+
+    if (category.status === CreationStatusEnum.Published)
+      throw new ConflictException('Category creation already confirmed');
+
+    return category;
   }
 
   findAll() {
-    return `This action returns all category`;
+    return this.categoryRepository.findAll();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} category`;
+  findOne(slug: string) {
+    return this.categoryRepository.findBySlug(slug);
   }
 
-  update(id: number, updateCategoryDto: UpdateCategoryDto) {
-    return `This action updates a #${id} category`;
+  update(slug: string, updateCategoryDto: Partial<CategoryDto>) {
+    return this.categoryRepository.updateOne(slug, updateCategoryDto);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} category`;
+  remove(id: string) {
+    return this.categoryRepository.deleteOne(id);
   }
 }

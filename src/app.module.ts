@@ -12,6 +12,7 @@ import { MailModule } from './modules/mail/mail.module';
 import { ProductModule } from './modules/product/product.module';
 import { UserModule } from './modules/user/user.module';
 import { BrandModule } from './modules/brand/brand.module';
+import { ReviewModule } from './modules/review/review.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { BrandModule } from './modules/brand/brand.module';
     ProductModule,
     CategoryModule,
     BrandModule,
+    ReviewModule,
   ],
 })
 export class AppModule implements NestModule {

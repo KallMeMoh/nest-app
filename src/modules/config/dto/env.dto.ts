@@ -1,16 +1,7 @@
 import { Transform } from 'class-transformer';
 import { IsEnum, IsNumber, IsOptional, IsString, IsUrl } from 'class-validator';
-
-export enum NodeEnv {
-  PRODUCTION = 'production',
-  DEVELOPMENT = 'development',
-  TEST = 'test',
-}
-
-// note to self: no need to support what the app doesn't use
-export enum EncryptionAlgo {
-  AES_256_GCM = 'aes-256-gcm',
-}
+import { NodeEnv } from '../enums/node-env.enum';
+import { EncryptionAlgo } from '../enums/enryption-algorithm.enum';
 
 export class EnvironmentVariables {
   @IsEnum(NodeEnv)

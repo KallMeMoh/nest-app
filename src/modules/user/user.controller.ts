@@ -17,8 +17,8 @@ import { User } from './entities/user.entity';
 import { R2BucketService } from '../bucket/bucket.service';
 import { ExtractTokenId } from '../../common/decorators/extract-token-id';
 import { UpdatePasswordDto } from './dto/update-password.dto';
-import { AllowedAvatarMimeType } from './enums/avatar-mimetype.enum';
 import { MailService } from '../mail/mail.service';
+import { AllowedPictureMimeType } from '../../common/enums/picture-mimetype.enum';
 
 @Controller('user')
 export class UserController {
@@ -39,8 +39,8 @@ export class UserController {
 
   @Get('avatar-upload-url')
   getAvatarUploadUrl(
-    @Query('mimetype', new ParseEnumPipe(AllowedAvatarMimeType))
-    mimetype: AllowedAvatarMimeType,
+    @Query('mimetype', new ParseEnumPipe(AllowedPictureMimeType))
+    mimetype: AllowedPictureMimeType,
   ) {
     const extension = mimetype.split('/')[1];
     const key = `avatars/${Date.now()}_${randomUUID()}.${extension}`;

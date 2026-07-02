@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '../config/config.service';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
-import { EncryptionAlgo } from '../config/dto/env.dto';
+import { EncryptionAlgo } from '../config/enums/enryption-algorithm.enum';
 
 @Injectable()
 export class CryptoService {
