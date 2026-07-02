@@ -8,4 +8,30 @@ export class BrandRepository {
   constructor(
     @InjectModel(Brand.name) private readonly brandModel: Model<Brand>,
   ) {}
+
+  create(data: Omit<Brand, '_id' | 'createdAt' | 'updatedAt'>) {
+    return this.brandModel.create(data);
+  }
+
+  async findById(categoryId: string) {
+    return this.brandModel.findById(categoryId);
+  }
+
+  async findAll() {
+    return this.brandModel.find({}, '-__v').lean();
+  }
+
+  async findBySlug(slug: string) {
+    return this.brandModel.findOne({ slug }, '-__v').lean();
+  }
+
+  async updateOne(slug: string, data: Partial<Brand>) {
+    return this.brandModel.findOneAndUpdate({ slug }, data, {
+      returnDocument: 'after',
+    });
+  }
+
+  deleteOne(_id: string) {
+    return this.brandModel.deleteOne({ _id });
+  }
 }

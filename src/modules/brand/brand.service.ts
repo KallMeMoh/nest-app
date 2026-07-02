@@ -1,26 +1,60 @@
-import { Injectable } from '@nestjs/common';
-import { CreateBrandDto } from './dto/create-brand.dto';
-import { UpdateBrandDto } from './dto/update-brand.dto';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { BrandRepository } from './brand.repository';
+import { BrandDto } from './dto/brand.dto';
+import { slugify } from 'transliteration';
+import { CreationStatusEnum } from '../../common/enums/creation-status.enum';
 
 @Injectable()
 export class BrandService {
-  create(createBrandDto: CreateBrandDto) {
-    return 'This action adds a new brand';
+  constructor(private readonly brandRepository: BrandRepository) {}
+
+  async create({ name, logo_mimetype }: BrandDto) {
+    let key: string | null = null;
+
+    if (logo_mimetype)
+      key = `brand/${Date.now()}_${randomUUID()}.${logo_mimetype.split('/')[1]}`;
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { __v, ...brand } = await this.brandRepository.create({
+      name,
+      slug: slugify(name, { separator: '-' }),
+      logoKey: key,
+      status: logo_mimetype
+        ? CreationStatusEnum.Draft
+        : CreationStatusEnum.Published,
+    });
+
+    return brand;
+  }
+
+  async confirmBrandCreation(brandId: string) {
+    const brand = await this.brandRepository.findById(brandId);
+    if (!brand) throw new NotFoundException("Brand doesn't exist");
+
+    if (brand.status === CreationStatusEnum.Published)
+      throw new ConflictException('Brand creation already confirmed');
+
+    return brand;
   }
 
   findAll() {
-    return `This action returns all brand`;
+    return this.brandRepository.findAll();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} brand`;
+  findOne(slug: string) {
+    return this.brandRepository.findBySlug(slug);
   }
 
-  update(id: number, updateBrandDto: UpdateBrandDto) {
-    return `This action updates a #${id} brand`;
+  update(slug: string, updateBrandDto: Partial<BrandDto>) {
+    return this.brandRepository.updateOne(slug, updateBrandDto);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} brand`;
+  remove(id: string) {
+    return this.brandRepository.deleteOne(id);
   }
 }
